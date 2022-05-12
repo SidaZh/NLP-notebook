@@ -50,6 +50,91 @@ class PatchEmbedding(nn.Layer):
 
 
 
+#### SelfAttention
+
+```python
+    def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
+        new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
+        x = x.view(*new_x_shape)
+        return x.permute(0, 2, 1, 3)	# [N, seq_len, head, head_size] --> [N, head, seq_len, head_size]
+    
+    def forward(
+        self, hidden_states, head_mask: Optional[torch.Tensor] = None, output_attentions: bool = False
+    ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor]]:
+        
+        key_layer = self.transpose_for_scores(self.key(hidden_states))
+        value_layer = self.transpose_for_scores(self.value(hidden_states))
+        query_layer = self.transpose_for_scores(self.query(hidden_states))
+        
+        # Q*KT / sqrt(dk)
+        attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        # softmax(qk/scale)
+        attention_probs = nn.functional.softmax(attention_scores, dim=-1)
+        #
+        context_layer = torch.matmul(attention_probs, value_layer)
+        # [N, head, seq_len, head_size] --> [N, seq_len, head, head_size]
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        # [N, seq_len, head, head_size] --> [N, seq_len, embed_size] head*head_size
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        context_layer = context_layer.view(*new_context_layer_shape) 
+```
+
+
+
+T5Attention relative_attention_bias:
+
+```python
+
+self.relative_attention_num_buckets = config.relative_attention_num_buckets	# 32
+self.relative_attention_max_distance = config.relative_attention_max_distance
+
+if self.has_relative_attention_bias:
+	self.relative_attention_bias = nn.Embedding(self.relative_attention_num_buckets, self.n_heads)	
+
+context_position = torch.arange(query_length, dtype=torch.long)[:, None]
+context_position = torch.arange(key_length, dtype=torch.long)[:, None]
+relative_position = memory_position - context_position	# shape (query_length, key_length)
+
+
+values = self.relative_attention_bias(relative_position_bucket)	# shape (query_length, key_length, num_heads)
+values = values.permute([2, 0, 1]).unsqueeze(0)  # shape (1, num_heads, query_length, key_length)
+```
+
+
+
+### Transformer结构分类
+
+[transformer模型分类](https://chowdera.com/2021/10/20211008192820500x.html)
+
+1. Encoder-only 自编码 bert-like
+
+2. Decoder-only 自回归 GPT-like
+
+3. Encoder-Decoder seq2seq BART/T5
+
+   input_ids->embedding->encoder->encoder_out
+
+   decoder_ids->
+
+
+
+参数：
+
+**mask**
+
+head_mask：
+
+attention_mask：
+
+**decoder**
+
+past_key_value：
+
+
+
+
+
 
 
 
@@ -299,11 +384,117 @@ decoder.final_layer_norm.weight
 
 
 
+**Albert模型state_dict**
+
+embeddings.position_ids
+embeddings.word_embeddings.weight
+embeddings.position_embeddings.weight
+embeddings.token_type_embeddings.weight
+embeddings.LayerNorm.weight
+embeddings.LayerNorm.bias
+encoder.embedding_hidden_mapping_in.weight
+encoder.embedding_hidden_mapping_in.bias
+
+encoder.albert_layer_groups.0.albert_layers.0.full_layer_layer_norm.weight
+encoder.albert_layer_groups.0.albert_layers.0.full_layer_layer_norm.bias
+encoder.albert_layer_groups.0.albert_layers.0.attention.query.weight
+encoder.albert_layer_groups.0.albert_layers.0.attention.query.bias
+encoder.albert_layer_groups.0.albert_layers.0.attention.key.weight
+encoder.albert_layer_groups.0.albert_layers.0.attention.key.bias
+encoder.albert_layer_groups.0.albert_layers.0.attention.value.weight
+encoder.albert_layer_groups.0.albert_layers.0.attention.value.bias
+encoder.albert_layer_groups.0.albert_layers.0.attention.dense.weight
+encoder.albert_layer_groups.0.albert_layers.0.attention.dense.bias
+encoder.albert_layer_groups.0.albert_layers.0.attention.LayerNorm.weight
+encoder.albert_layer_groups.0.albert_layers.0.attention.LayerNorm.bias
+encoder.albert_layer_groups.0.albert_layers.0.ffn.weight
+encoder.albert_layer_groups.0.albert_layers.0.ffn.bias
+encoder.albert_layer_groups.0.albert_layers.0.ffn_output.weight
+encoder.albert_layer_groups.0.albert_layers.0.ffn_output.bias
+pooler.weight
+pooler.bias
 
 
 
+**GPT模型 state_dict**
 
-**2022年3月21日**
+wte.weight
+wpe.weight
 
-1. transformers Hugging face transformers框架CLIP模型原生不支持fp16（因为text model的causal_attention_mask为float32）
-2. 
+h.0.ln_1.weight
+h.0.ln_1.bias
+h.0.attn.bias
+h.0.attn.masked_bias
+h.0.attn.c_attn.weight
+h.0.attn.c_attn.bias
+h.0.attn.c_proj.weight
+h.0.attn.c_proj.bias
+h.0.ln_2.weight
+h.0.ln_2.bias
+h.0.mlp.c_fc.weight
+h.0.mlp.c_fc.bias
+h.0.mlp.c_proj.weight
+h.0.mlp.c_proj.bias
+
+ln_f.weight
+ln_f.bias
+
+
+
+**Bart模型state dict**
+
+shared.weight
+encoder.embed_tokens.weight
+encoder.embed_positions.weight
+encoder.layers.0.self_attn.k_proj.weight
+encoder.layers.0.self_attn.k_proj.bias
+encoder.layers.0.self_attn.v_proj.weight
+encoder.layers.0.self_attn.v_proj.bias
+encoder.layers.0.self_attn.q_proj.weight
+encoder.layers.0.self_attn.q_proj.bias
+encoder.layers.0.self_attn.out_proj.weight
+encoder.layers.0.self_attn.out_proj.bias
+encoder.layers.0.self_attn_layer_norm.weight
+encoder.layers.0.self_attn_layer_norm.bias
+encoder.layers.0.fc1.weight
+encoder.layers.0.fc1.bias
+encoder.layers.0.fc2.weight
+encoder.layers.0.fc2.bias
+encoder.layers.0.final_layer_norm.weight
+encoder.layers.0.final_layer_norm.bias
+
+encoder.layernorm_embedding.weight
+encoder.layernorm_embedding.bias
+
+decoder.embed_tokens.weight
+decoder.embed_positions.weight
+decoder.layers.0.self_attn.k_proj.weight
+decoder.layers.0.self_attn.k_proj.bias
+decoder.layers.0.self_attn.v_proj.weight
+decoder.layers.0.self_attn.v_proj.bias
+decoder.layers.0.self_attn.q_proj.weight
+decoder.layers.0.self_attn.q_proj.bias
+decoder.layers.0.self_attn.out_proj.weight
+decoder.layers.0.self_attn.out_proj.bias
+decoder.layers.0.self_attn_layer_norm.weight
+decoder.layers.0.self_attn_layer_norm.bias
+decoder.layers.0.encoder_attn.k_proj.weight
+decoder.layers.0.encoder_attn.k_proj.bias
+decoder.layers.0.encoder_attn.v_proj.weight
+decoder.layers.0.encoder_attn.v_proj.bias
+decoder.layers.0.encoder_attn.q_proj.weight
+decoder.layers.0.encoder_attn.q_proj.bias
+decoder.layers.0.encoder_attn.out_proj.weight
+decoder.layers.0.encoder_attn.out_proj.bias
+decoder.layers.0.encoder_attn_layer_norm.weight
+decoder.layers.0.encoder_attn_layer_norm.bias
+decoder.layers.0.fc1.weight
+decoder.layers.0.fc1.bias
+decoder.layers.0.fc2.weight
+decoder.layers.0.fc2.bias
+decoder.layers.0.final_layer_norm.weight
+decoder.layers.0.final_layer_norm.bias
+
+decoder.layernorm_embedding.weight
+decoder.layernorm_embedding.bias
+
