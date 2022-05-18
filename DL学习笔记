@@ -25,3 +25,9 @@
   y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
   $$
   
+
+#### 2. softmax
+
+![image-20220517170329898](C:\Users\zhaosida\AppData\Roaming\Typora\typora-user-images\image-20220517170329898.png)
+
+减去最大值：计算稳定性

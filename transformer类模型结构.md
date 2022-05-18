@@ -82,6 +82,27 @@ class PatchEmbedding(nn.Layer):
 
 
 
+#### **CrossAttention**
+
+```python
+
+	query_states	# [bsz, num_heads, tgt_len, head_dim]
+    key_states, value_states	# [bsz, num_heads, src_len, head_dim]
+    
+    attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))	# [bsz, num_heads, tgt_len, src_len]
+	attn_probs = nn.functional.softmax(attn_weights, dim=-1)	# [bsz, num_heads, tgt_len, src_len]
+    
+	attn_output = torch.bmm(attn_probs, value_states)	# [bsz, num_heads, tgt_len, head_dim]
+	attn_output = attn_output.view(bsz, self.num_heads, tgt_len, self.head_dim)
+    attn_output = attn_output.transpose(1, 2)	# [bsz, tgt_len, num_heads, head_dim]
+    attn_output = attn_output.reshape(bsz, tgt_len, self.embed_dim)	# [bsz, tgt_len, embed_dim]
+    
+    attn_output = self.out_proj(attn_output)
+    
+```
+
+
+
 T5Attention relative_attention_bias:
 
 ```python
