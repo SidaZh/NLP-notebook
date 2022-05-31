@@ -55,3 +55,72 @@ project
 
 ​	
 
+### 3. 代码备份
+
+```C++
+// 打印数据
+std::vector<half> outputs;
+outputs.clear();
+outputs.resize(16);
+
+cudaMemcpy(outputs.data(), layernormed_query.data_ptr(), sizeof(half) * 16, cudaMemcpyDeviceToHost);
+printf("outputs step %d:\n",step);
+
+for (int i = 0; i < 16; i++)
+{
+    std::cout << outputs[i] << " ";
+}
+printf("\n");
+```
+
+
+
+## 4.  EET框架
+
+#### 2.1 基本使用
+
+EETBertModel
+
+​	__init__
+
+​	__call__
+
+​		input_ids:输入序列在词汇表中的索引
+
+init：构造函数，使用加载预训练模型param的模型模块
+
+call：调用前向过程
+
+from_torch：加载torch的tensor（weight），再调用init函数
+
+
+
+from_pretrained
+
+layer_model_dict：	dict{分组键（网络结构名前8位）：dict{state_dict网络结构名称：对应参数tensor}}
+
+
+
+- **tips：**
+  1. GPU第一次推理速度很慢（与初始化有关），——但是EET框架算子不存在这个问题
+  2. nvprof性能分析工具，
+  3. NVIDIA Nsight分析工具
+
+
+
+
+
+#### 2.2 体会
+
+1. EET模型做微调，适配权重参数；——易用性
+
+
+
+
+
+#### 2.3 性能优化
+
+1. Gemm矩阵乘，cublas库，gemm择优
+2. 混合精度，
+3. int8量化
+4. 分析瓶颈：工具nvprof、nsys

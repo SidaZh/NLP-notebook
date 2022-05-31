@@ -1,5 +1,6 @@
 自动机器学习技术AutoML: 数据处理、特征工程、模型、优化算法等流程自动流水线化
 自动神经网络结构搜索技术NAS: 拓扑超参优化；优化目标-网络性能、搜索时间；搜索空间，搜索策略，性能评估策略；
+
 1.	性能评估策略：不仅取决于网络结构，还取决于训练效果（同一个网络学习参数的好坏）；计算量过大——条件松弛；更少的epochs（但不同结构的网络高效的时期不同）、数据精炼（均匀覆盖、难例提取）、迁移学习、数据样本本身的缩放。评估指标：正确率、参数数量、FLOPs、推理延时、计算强度、内存占用、功耗。多目标帕累托最优-非劣解集
 2.	时间性能：真实时延（在机器上的运行时间）-不便——>时延预测（拆解成kernel size, stride for convolution, expansion ratio）
 3.	网络结构编码参数化，包括算子、cell连接；channel未加入
@@ -14,7 +15,7 @@
 存在问题：自动数据标签标注，训练量过大，基于梯度的方法需要参数连续化
  
 
-2019-7-3:
+## 1. 基础
 
 
 
@@ -31,3 +32,164 @@
 ![image-20220517170329898](C:\Users\zhaosida\AppData\Roaming\Typora\typora-user-images\image-20220517170329898.png)
 
 减去最大值：计算稳定性
+
+
+
+## 3. huggingface模型
+
+**Bert**
+
+Embedding
+
+embeddings.position_ids
+embeddings.word_embeddings.weight
+embeddings.position_embeddings.weight
+embeddings.token_type_embeddings.weight
+embeddings.LayerNorm.weight
+embeddings.LayerNorm.bias
+
+encoder
+
+QKV + Wo + LN + FFN + LN
+
+layer.0.attention.self.query.weight
+layer.0.attention.self.query.bias
+layer.0.attention.self.key.weight
+layer.0.attention.self.key.bias
+layer.0.attention.self.value.weight
+layer.0.attention.self.value.bias
+layer.0.attention.output.dense.weight
+layer.0.attention.output.dense.bias
+layer.0.attention.output.LayerNorm.weight
+layer.0.attention.output.LayerNorm.bias
+layer.0.intermediate.dense.weight
+layer.0.intermediate.dense.bias
+layer.0.output.dense.weight
+layer.0.output.dense.bias
+layer.0.output.LayerNorm.weight
+layer.0.output.LayerNorm.bias
+
+
+
+**ViT**
+
+Patch_Embedding
+
+\# in ViT, layernorm is applied before self-attention
+
+
+
+## 4. Python
+
+for k, g in groupby(data, keyfunc)：
+
+data是分组数据（可迭代对象），keyfunc是分组函数
+
+k是当前分组键，g是一个迭代器，可用于在该分组键定义的组上迭代。换句话说，groupby迭代器本身返回迭代器。
+
+
+
+
+$$
+\sqrt{k}
+$$
+
+
+
+
+
+## 5. CUDA编程
+
+#### 5.1 编程模型
+
+线程块
+
+根据线程ID寻址：对于 一个三维的大小为 (Dx，Dy，Dz)的块，这个线程的索引是(x，y，z)， 线程的ID 是(x + y Dx + z DxDy)。
+
+```text
+threadIdx.x
+threadIdx.y
+blockIdx.x
+blockIdx.y
+```
+
+线程的内置变量blockDim，获取线程块各个维度的大小（Dx,Dy)
+
+```
+blockDim.x,y,z	给出块中特定方向的线程数(长宽高)
+gridDim.x,y,z	给出网格中特定方向的块数
+```
+
+![img](https://images2015.cnblogs.com/blog/494924/201703/494924-20170303224153626-1838869747.png)
+
+
+
+![img](https://images2015.cnblogs.com/blog/494924/201703/494924-20170303224323438-2036415075.png)
+
+block 2D 3*4
+
+| (0,0) | (1,0) | (2,0) |
+| ----- | ----- | ----- |
+| (0,1) | (1,1) | (2,1) |
+| (0,2) | (1,2) | (2,2) |
+| (0,3) | (1,3) | (2,3) |
+
+
+
+| 0    | 1    | 2    |
+| ---- | ---- | ---- |
+| 3    | 4    | 5    |
+| 6    | 7    | 8    |
+| 9    | 10   | 11   |
+
+
+
+    int blockId = blockIdx.x + blockIdx.y * gridDim.x  
+                     + gridDim.x * gridDim.y * blockIdx.z;  
+    int threadId = blockId * (blockDim.x * blockDim.y * blockDim.z)  
+                       + (threadIdx.z * (blockDim.x * blockDim.y))  
+                       + (threadIdx.y * blockDim.x) + threadIdx.x;   
+
+
+#### 5.2 kernel代码
+
+template模板函数需要显式实例化
+
+确定index：（1）index的范围；（2）作为索引时的映射或对应关系
+
+简单的方法：按照tensor的维度申请grid和block（注意blockId是在gridDim范围内取值）
+
+
+
+#### 5.3 cuda fp16
+
+CUDA 7.5 中定义的 half2 结构在一个32位的字中存储了两个半精度浮点数
+
+![image-20220506141250035](C:\Users\zhaosida\AppData\Roaming\Typora\typora-user-images\image-20220506141250035.png)
+
+
+
+#### 5.4 cublas库
+
+
+
+#### 5.5 cuda调试
+
+1. 在cuda kernel中printf
+2. cuda() 在gpu上的数据需要拷贝回host侧 cudaMemcpy
+
+
+
+
+
+
+
+
+
+## 6. NLP
+
+softmax
+
+layernorm
+
+batchnorm
