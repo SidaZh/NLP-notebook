@@ -403,6 +403,8 @@ decoder.block.0.layer.2.layer_norm.weight
 
 decoder.final_layer_norm.weight
 
+**注意：**Google的T5没有除以根号dk的，但它依然能够正常收敛，那是因为它在初始化策略上做了些调整，所以这个事情还跟初始化有关
+
 
 
 **Albert模型state_dict**

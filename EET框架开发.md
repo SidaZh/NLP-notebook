@@ -64,7 +64,7 @@ outputs.clear();
 outputs.resize(16);
 
 cudaMemcpy(outputs.data(), layernormed_query.data_ptr(), sizeof(half) * 16, cudaMemcpyDeviceToHost);
-printf("outputs step %d:\n",step);
+printf("outputs*****************\n");
 
 for (int i = 0; i < 16; i++)
 {

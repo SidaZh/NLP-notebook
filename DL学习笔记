@@ -94,7 +94,11 @@ $$
 \sqrt{k}
 $$
 
+- pybind
 
+  - 默认参数```def("forward", &eet::op::MultiHeadAttention::forward, "MultiHeadAttention forward", py::arg("need");```
+
+    
 
 
 
