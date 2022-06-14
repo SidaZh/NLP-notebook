@@ -18,7 +18,7 @@ torch.from_numpy()
 
 
 
-
+注意映射操作时的**权重转置**关系
 
 - Linear层的weight的shape是(out_features, in_features)，output_channel在前
 - Conv1D层的weight的shape是(in_features, out_features)，权重相比较Linear层已经做了转置，乘法时不需转置

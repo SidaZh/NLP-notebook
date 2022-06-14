@@ -69,12 +69,15 @@ class PatchEmbedding(nn.Layer):
         # Q*KT / sqrt(dk)
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        # softmax(qk/scale)
+        # softmax(qk/scale) [N, head, seq_len, seq_len] --> [N, head, seq_len, seq_len]
         attention_probs = nn.functional.softmax(attention_scores, dim=-1)
-        #
+        
+        # [N, head, seq_len, seq_len] --> [N, head, seq_len, head_size]
         context_layer = torch.matmul(attention_probs, value_layer)
+        
         # [N, head, seq_len, head_size] --> [N, seq_len, head, head_size]
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        
         # [N, seq_len, head, head_size] --> [N, seq_len, embed_size] head*head_size
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape) 
@@ -87,7 +90,7 @@ class PatchEmbedding(nn.Layer):
 ```python
 
 	query_states	# [bsz, num_heads, tgt_len, head_dim]
-    key_states, value_states	# [bsz, num_heads, src_len, head_dim]
+    key_states, value_states	# [bsz, num_heads, src_len, head_dim] #from encoder output or kv_cache
     
     attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))	# [bsz, num_heads, tgt_len, src_len]
 	attn_probs = nn.functional.softmax(attn_weights, dim=-1)	# [bsz, num_heads, tgt_len, src_len]
@@ -151,6 +154,23 @@ attention_mask：
 **decoder**
 
 past_key_value：
+
+
+
+### Transformer模型参数量计算
+
+hidden_size=emb_size
+
+```python
+（vocab_size + max_position_embeddings + token_type_embeddings）*emb_size +			# embedding
+num_layers*（emb_size*head_size*heads*3 + emb_size*emb_size）							# Wq,Wk,Wv,Wo
++ num_layers*（emb_size*emb_size*4*2）												# ffn 
++ num_layers*（emb_size*2*2）															# layernorm
+
+vocab_size*emb_size + num_layers*(emb_size*emb_size*12)
+
+e.g T5-large: params = 32128*1024+
+```
 
 
 
@@ -246,7 +266,7 @@ vision_model.encoder.layers.0.self_attn.k_proj.weight
 
 
 
-**CLIP模型state_dict**
+##### **CLIP模型state_dict**
 
 **text_model**
 
@@ -310,7 +330,7 @@ visual_projection.weight
 
 
 
-**ViT模型state_dict**
+#####  **ViT模型state_dict**
 
 embeddings.cls_token
 embeddings.position_embeddings
@@ -342,7 +362,7 @@ pooler.dense.bias
 
 
 
-**Bert模型 state_dict**
+#####  **Bert模型 state_dict**
 
 embeddings.position_ids
 embeddings.word_embeddings.weight
@@ -370,7 +390,7 @@ layer.0.output.LayerNorm.bias
 
 
 
-**T5模型 state_dict**
+#####  T5模型 state_dict
 
 shared.weight
 encoder.embed_tokens.weight
@@ -407,7 +427,7 @@ decoder.final_layer_norm.weight
 
 
 
-**Albert模型state_dict**
+#####  **Albert模型state_dict**
 
 embeddings.position_ids
 embeddings.word_embeddings.weight
@@ -439,7 +459,7 @@ pooler.bias
 
 
 
-**GPT模型 state_dict**
+#####  **GPT模型 state_dict**
 
 wte.weight
 wpe.weight
@@ -464,7 +484,7 @@ ln_f.bias
 
 
 
-**Bart模型state dict**
+#####  **Bart模型state dict**
 
 shared.weight
 encoder.embed_tokens.weight

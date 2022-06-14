@@ -124,3 +124,13 @@ layer_model_dict：	dict{分组键（网络结构名前8位）：dict{state_dict
 2. 混合精度，
 3. int8量化
 4. 分析瓶颈：工具nvprof、nsys
+   - nvprof：nvprof --unified-memory-profiling off  python example/python/models/test_bert.py
+5. 性能指标：吞吐量，fps，显存占用
+
+
+
+#### 2.4 精度调试
+
+1. 整体结构输出比对
+2. kernel输出比对
+3. kernel内比对
