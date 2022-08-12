@@ -104,7 +104,7 @@ layer_model_dict：	dict{分组键（网络结构名前8位）：dict{state_dict
 - **tips：**
   1. GPU第一次推理速度很慢（与初始化有关），——但是EET框架算子不存在这个问题
   2. nvprof性能分析工具，
-  3. NVIDIA Nsight分析工具
+  3. NVIDIA Nsight分析工具nsys
 
 
 
@@ -121,11 +121,14 @@ layer_model_dict：	dict{分组键（网络结构名前8位）：dict{state_dict
 #### 2.3 性能优化
 
 1. Gemm矩阵乘，cublas库，gemm择优
-2. 混合精度，
-3. int8量化
-4. 分析瓶颈：工具nvprof、nsys
+2. 算子融合，缓存优化
+3. 混合精度，fp16
+4. int8量化
+5. tensorRT
+6. 分析瓶颈：工具nvprof、nsys
    - nvprof：nvprof --unified-memory-profiling off  python example/python/models/test_bert.py
-5. 性能指标：吞吐量，fps，显存占用
+   - nsys：nsys profile -o filename --stats=true python test.py --force-overwrite
+7. 性能指标：吞吐量，fps，显存占用
 
 
 
@@ -134,3 +137,45 @@ layer_model_dict：	dict{分组键（网络结构名前8位）：dict{state_dict
 1. 整体结构输出比对
 2. kernel输出比对
 3. kernel内比对
+
+
+
+#### 2.5 pipeline
+
+GenerationMixin_EET
+
+​	prepare_inputs_for_generation
+
+
+
+generate
+
+
+
+## 5. 分布式训练推理优化
+
+分布式
+
+IB网络连接，nvlink，pcie
+
+#### 5.1 pipeline并行
+
+模型并行：层内并行（tensor并行），层间并行（pipeline并行）
+
+主要问题：（1）怎么切分模型（2）如何分配到多个设备上（3）如何做到整体性能最优
+
+auto_balancing
+
+流水线过程中，使用的权重更新版本
+
+GPipe：维护模型权重的单一版本，权重梯度是累积的，不会立即应用
+
+开源库：GPipe（基于tensorflow），torchgpipe（gpipe pytorch版），fairscale，pytorch1.8.0版本（Upstream fairscale.nn.Pipe into PyTorch as torch.distributed.pipeline），pipedream
+
+deepspeed、交错流水线[Interleaved Pipeline](https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html)
+
+
+
+参考fastertransformer框架的pipeline实现
+
+mindspore推理

@@ -2,19 +2,15 @@
 
 torch.flatten(t, start_dim=0, end_dim=-1) 
 
-
-
 torch.transpose
 
 torch.from_numpy()
 
-
-
 **contiguous** 返回连续内存tensor深拷贝
 
-
-
 简单的数据用`transpose()`就可以了，但是个人觉得不够直观，指向性弱了点；复杂维度的可以用`permute()`，对于维度的改变，一般更加精准；view操作的tensor要求连续排布，修改的是同一个对象。
+
+torch.triu(input, diagonal=0, out=None) 上三角矩阵，diagonal指主对角线上下n行
 
 
 
@@ -42,6 +38,10 @@ torch.from_numpy()
    type_as
    
    tensor.to()
+   
+3. 查看显存占用
+
+   torch.cuda.memory_allocated(device)
 
 
 

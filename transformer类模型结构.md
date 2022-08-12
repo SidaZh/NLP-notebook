@@ -163,13 +163,16 @@ hidden_size=emb_size
 
 ```python
 （vocab_size + max_position_embeddings + token_type_embeddings）*emb_size +			# embedding
-num_layers*（emb_size*head_size*heads*3 + emb_size*emb_size）							# Wq,Wk,Wv,Wo
+num_layers*（emb_size*head_size*heads*3 + head_size*heads*emb_size）					# Wq,Wk,Wv,Wo(attn, self_attn, cross_attn)
 + num_layers*（emb_size*emb_size*4*2）												# ffn 
 + num_layers*（emb_size*2*2）															# layernorm
 
 vocab_size*emb_size + num_layers*(emb_size*emb_size*12)
+指定d_ff, inner_dim:
+vocab_size*emb_size + num_layers*(emb_size*inner_dim*4 + emb_size*d_ff*2)
 
-e.g T5-large: params = 32128*1024+
+e.g T5-large: params = 32128*1024+24*(1024*1024*12)*3
+    
 ```
 
 
@@ -541,3 +544,14 @@ decoder.layers.0.final_layer_norm.bias
 decoder.layernorm_embedding.weight
 decoder.layernorm_embedding.bias
 
+
+
+
+
+**模型结构总结**：
+
+encoder：bert：layernorm after；roberta：pos bias
+
+decoder：gpt：layernorm before（attn&ffn）；
+
+seq2seq：T5：fc没有bias，layernorm没有gamma，attention scores不需要除以根号dk；bart：

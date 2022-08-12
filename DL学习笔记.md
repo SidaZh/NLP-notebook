@@ -89,6 +89,9 @@ data是分组数据（可迭代对象），keyfunc是分组函数
 
 k是当前分组键，g是一个迭代器，可用于在该分组键定义的组上迭代。换句话说，groupby迭代器本身返回迭代器。
 
+- 冒号注释变量类型：var: type = value 其实本质上就是 var = value # type就是var期望的类型
+
+- \*args、 \*\*kwargs：\*args和 \*\*kwargs语法不仅可以在函数定义中使用，同样可以在函数调用的时候使用。不同的是，如果说在函数定义的位置使用\*args和\*\*kwargs是一个将参数pack的过程，那么在函数调用的时候就是一个将参数unpack的过程了。
 
 
 
@@ -111,6 +114,8 @@ $$
 线程块
 
 根据线程ID寻址：对于 一个三维的大小为 (Dx，Dy，Dz)的块，这个线程的索引是(x，y，z)， 线程的ID 是(x + y Dx + z DxDy)。
+
+- 注意一个tensor的shape(a, b, c)，block(x, y, z)，是c、b、a对应x、y、z
 
 ```text
 threadIdx.x
@@ -148,13 +153,23 @@ block 2D 3*4
 | 6    | 7    | 8    |
 | 9    | 10   | 11   |
 
-
+**计算公式**
 
     int blockId = blockIdx.x + blockIdx.y * gridDim.x  
                      + gridDim.x * gridDim.y * blockIdx.z;  
     int threadId = blockId * (blockDim.x * blockDim.y * blockDim.z)  
                        + (threadIdx.z * (blockDim.x * blockDim.y))  
-                       + (threadIdx.y * blockDim.x) + threadIdx.x;   
+                       + (threadIdx.y * blockDim.x) + threadIdx.x;
+    
+    根据blockId反求blockIdx.x、blockIdx.y、blockIdx.z：
+    blockIdx.x = blockId % gridDim.x
+    blockIdx.z = blockId / (gridDim.x * gridDim.y)
+    
+    grid和block维度tips：
+    明确x轴（主方向，数据展开的方向），以tensor的shape为匹配目标。
+    例：有一tensor维度(m, n)，拆分成grid(m, f), block(n/f)
+    (m, f, n/f),x=n/f,y=f,z=m, index = threadIdx.x + blockIdx.y * n/f + blockIdx.x * f * n/f
+
 
 
 #### 5.2 kernel代码
@@ -164,6 +179,8 @@ template模板函数需要显式实例化
 确定index：（1）index的范围；（2）作为索引时的映射或对应关系
 
 简单的方法：按照tensor的维度申请grid和block（注意blockId是在gridDim范围内取值）
+
+- block size：seq_len，取32、64...，增加判断防止溢出
 
 
 
@@ -209,4 +226,8 @@ batchnorm
 #### 1. attention
 
 - qkT为什么要除以根号dk：softmax输入很大时，其梯度会变得很小，趋近于0，除以根号dk使得D(qkT/sqrt(dk))方差稳定到1，使softmax的梯度不至于太小。
+
+
+
+decoder生成训练：Teacher Forcing
 
